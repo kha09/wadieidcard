@@ -1,103 +1,264 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Download } from "lucide-react"
+
+export default function GiftCardGenerator() {
+  const [name, setName] = useState("")
+  const [textPosition, setTextPosition] = useState({ x: 300, y: 200 })
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [fontLoaded, setFontLoaded] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Placeholder image until user uploads their own
+  const placeholderImage = "/wmk.jpeg?height=800&width=600"
+
+  useEffect(() => {
+    // Load custom font
+    const font = new FontFace('cairo', 'url(/arabfontreg.ttf)')
+    font.load()
+      .then(() => {
+        document.fonts.add(font)
+        setFontLoaded(true)
+        console.log('Font loaded successfully')
+      })
+      .catch(err => {
+        console.error('Error loading font:', err)
+        // Fallback to Arial if font fails to load
+        setFontLoaded(true)
+      })
+
+    // Create image element
+    if (!imageRef.current) {
+      imageRef.current = new Image()
+      imageRef.current.crossOrigin = "anonymous"
+      imageRef.current.onload = () => {
+        setImageLoaded(true)
+        drawCanvas()
+      }
+      imageRef.current.src = placeholderImage
+    }
+  }, [])
+
+  useEffect(() => {
+    if (imageLoaded) {
+      drawCanvas()
+    }
+  }, [name, textPosition, imageLoaded])
+
+  const drawCanvas = (forDownload = false) => {
+    if (!canvasRef.current || !imageRef.current) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    // Set fixed canvas dimensions
+    const canvasWidth = 1000
+    const canvasHeight = 800
+    canvas.width = canvasWidth
+    canvas.height = canvasHeight
+
+    // Calculate scaling to maintain aspect ratio
+    const scale = Math.min(
+      canvasWidth / imageRef.current.width,
+      canvasHeight / imageRef.current.height
+    )
+    const width = imageRef.current.width * scale
+    const height = imageRef.current.height * scale
+    const x = (canvasWidth - width) / 2
+    const y = (canvasHeight - height) / 2
+
+    // Draw scaled image centered
+    ctx.drawImage(imageRef.current, x, y, width, height)
+
+    // Draw text
+    if (name.trim()) {
+      ctx.font = fontLoaded ? "30px cairo" : "30px Arial"
+      ctx.fillStyle = "#fca11a"
+      ctx.textAlign = "right" // Always right-aligned for Arabic
+      ctx.direction = "rtl" // Always RTL for Arabic
+      ctx.fillText(name, textPosition.x, textPosition.y)
+
+      // Draw border around text (only when editing, not for download)
+      if (!forDownload) {
+        const metrics = ctx.measureText(name)
+        const textWidth = metrics.width
+        const textHeight = 64 // Approximate height for 64px font
+        const textLeft = textPosition.x - textWidth // For RTL text
+        const textTop = textPosition.y - textHeight
+
+        ctx.strokeStyle = "#3b82f6" // Blue border
+        ctx.lineWidth = 2
+        ctx.setLineDash([5, 3]) // Dashed line
+        ctx.strokeRect(textLeft - 5, textTop - 5, textWidth + 10, textHeight + 10)
+        ctx.setLineDash([]) // Reset dash
+      }
+    }
+  }
+
+  const downloadImage = () => {
+    if (!canvasRef.current || !imageRef.current) return
+
+    // Create high resolution canvas (2x size but same display dimensions)
+    const tempCanvas = document.createElement("canvas")
+    const scaleFactor = 2 // Higher scale factor = better quality but larger file
+    const canvasWidth = 1000
+    const canvasHeight = 800
+    tempCanvas.width = canvasWidth
+    tempCanvas.height = canvasHeight
+    tempCanvas.style.width = "1000px"
+    tempCanvas.style.height = "800px"
+
+    const tempCtx = tempCanvas.getContext("2d")
+    if (!tempCtx) return
+
+    // Calculate scaling to maintain aspect ratio
+    const scale = Math.min(
+      canvasWidth / imageRef.current.width,
+      canvasHeight / imageRef.current.height
+    )
+    const width = imageRef.current.width * scale
+    const height = imageRef.current.height * scale
+    const x = (canvasWidth - width) / 2
+    const y = (canvasHeight - height) / 2
+
+    // Draw scaled image centered
+    tempCtx.drawImage(imageRef.current, x, y, width, height)
+
+    // Draw text (without border)
+    if (name.trim()) {
+      tempCtx.font = fontLoaded ? "30px cairo" : "30px Arial"
+      tempCtx.fillStyle = "#fca11a"
+      tempCtx.textAlign = "right" // Always right-aligned for Arabic
+      tempCtx.direction = "rtl" // Always RTL for Arabic
+      tempCtx.fillText(name, textPosition.x, textPosition.y)
+    }
+
+    // Download the image
+    const link = document.createElement("a")
+    link.download = `gift-card-${name}.png`
+    link.href = tempCanvas.toDataURL("image/png")
+    link.click()
+  }
+
+  // Simplified mouse handlers - directly set position on drag
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!name.trim()) return
+    setIsDragging(true)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current) return
+
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+
+    // Get mouse position relative to canvas
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+
+    // Set text position directly to mouse position
+    setTextPosition({ x, y })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  // Simplified touch handlers
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!name.trim()) return
+    e.preventDefault() // Prevent scrolling
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current) return
+    e.preventDefault() // Prevent scrolling
+
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    const touch = e.touches[0]
+
+    // Get touch position relative to canvas
+    const x = (touch.clientX - rect.left) * (canvas.width / rect.width)
+    const y = (touch.clientY - rect.top) * (canvas.height / rect.height)
+
+    // Set text position directly to touch position
+    setTextPosition({ x, y })
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="container mx-auto py-8 px-4" dir="rtl">
+      <Card className="max-w-3xl mx-auto">
+        <CardHeader>
+          <div className="flex items-center justify-center gap-4">
+          <CardTitle className="text-2xl">بطاقة معايدة</CardTitle>
+          <img src="/wmklogo.png" alt="Wadi Maakah Logo" className="h-15 w-auto" />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col items-center justify-center">
+            <div className="relative">
+              <canvas
+                ref={canvasRef}
+                className={`border border-gray-300 rounded-md max-w-full ${name.trim() ? "cursor-move" : "cursor-default"}`}
+                style={{ maxHeight: "500px", objectFit: "contain" }}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              />
+              {isDragging && (
+                <div className="absolute inset-0 bg-blue-500/10 pointer-events-none border-2 border-blue-500 rounded-md" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {name.trim() ? "انقر واسحب في أي مكان لتحديد موضع النص" : "أدخل اسمك لإضافة نص إلى الصورة"}
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="name-input">الاسم</Label>
+              <Input
+                id="name-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="أدخل الاسم"
+                dir="rtl"
+                className="mt-1 text-right"
+              />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={downloadImage} className="w-full" disabled={!name.trim()}>
+            <Download className="ml-2 h-4 w-4" /> تحميل البطاقة
+          </Button>
+        </CardFooter>
+      </Card>
+      <div className="text-center text-gray-500 mt-8 text-sm">
+        Developed by Khalid Abdulghani | Powered by Wadi Makkah
+      </div>
     </div>
-  );
+  )
 }
