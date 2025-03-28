@@ -1,13 +1,13 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Download } from "lucide-react"
+import NextImage from "next/image"
 
 export default function GiftCardGenerator() {
   const [name, setName] = useState("")
@@ -21,40 +21,8 @@ export default function GiftCardGenerator() {
   // Placeholder image until user uploads their own
   const placeholderImage = "/wmk.jpeg?height=800&width=600"
 
-  useEffect(() => {
-    // Load custom font
-    const font = new FontFace('cairo', 'url(/arabfontreg.ttf)')
-    font.load()
-      .then(() => {
-        document.fonts.add(font)
-        setFontLoaded(true)
-        console.log('Font loaded successfully')
-      })
-      .catch(err => {
-        console.error('Error loading font:', err)
-        // Fallback to Arial if font fails to load
-        setFontLoaded(true)
-      })
-
-    // Create image element
-    if (!imageRef.current) {
-      imageRef.current = new Image()
-      imageRef.current.crossOrigin = "anonymous"
-      imageRef.current.onload = () => {
-        setImageLoaded(true)
-        drawCanvas()
-      }
-      imageRef.current.src = placeholderImage
-    }
-  }, [])
-
-  useEffect(() => {
-    if (imageLoaded) {
-      drawCanvas()
-    }
-  }, [name, textPosition, imageLoaded])
-
-  const drawCanvas = (forDownload = false) => {
+  // Define drawCanvas with useCallback to avoid dependency issues
+  const drawCanvas = useCallback((forDownload = false) => {
     if (!canvasRef.current || !imageRef.current) return
 
     const canvas = canvasRef.current
@@ -103,14 +71,46 @@ export default function GiftCardGenerator() {
         ctx.setLineDash([]) // Reset dash
       }
     }
-  }
+  }, [fontLoaded, name, textPosition])
+
+  // Load font and image
+  useEffect(() => {
+    // Load custom font
+    const font = new FontFace('cairo', 'url(/arabfontreg.ttf)')
+    font.load()
+      .then(() => {
+        document.fonts.add(font)
+        setFontLoaded(true)
+        console.log('Font loaded successfully')
+      })
+      .catch(err => {
+        console.error('Error loading font:', err)
+        // Fallback to Arial if font fails to load
+        setFontLoaded(true)
+      })
+
+    // Create image element
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setImageLoaded(true);
+    };
+    img.src = placeholderImage;
+    imageRef.current = img;
+  }, [])
+
+  // Redraw canvas when dependencies change
+  useEffect(() => {
+    if (imageLoaded) {
+      drawCanvas()
+    }
+  }, [imageLoaded, drawCanvas])
 
   const downloadImage = () => {
     if (!canvasRef.current || !imageRef.current) return
 
-    // Create high resolution canvas (2x size but same display dimensions)
+    // Create high resolution canvas for download
     const tempCanvas = document.createElement("canvas")
-    const scaleFactor = 2 // Higher scale factor = better quality but larger file
     const canvasWidth = 1000
     const canvasHeight = 800
     tempCanvas.width = canvasWidth
@@ -207,10 +207,9 @@ export default function GiftCardGenerator() {
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-center gap-4">
-          <CardTitle className="text-2xl">بطاقة معايدة</CardTitle>
-          <img src="/wmklogo.png" alt="Wadi Maakah Logo" className="h-15 w-auto" />
-
-        </div>
+            <CardTitle className="text-2xl">بطاقة معايدة</CardTitle>
+            <NextImage src="/wmklogo.png" alt="Wadi Maakah Logo" width={40} height={40} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col items-center justify-center">
