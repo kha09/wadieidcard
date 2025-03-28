@@ -19,7 +19,7 @@ export default function GiftCardGenerator() {
   const [isDragging, setIsDragging] = useState(false)
 
   // Placeholder image until user uploads their own
-  const placeholderImage = "/wmk.jpeg?height=800&width=600"
+  const placeholderImage = "/wmkh.png?height=800&width=600"
 
   // Define drawCanvas with useCallback to avoid dependency issues
   const drawCanvas = useCallback((forDownload = false) => {
