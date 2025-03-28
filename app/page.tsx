@@ -156,15 +156,15 @@ export default function GiftCardGenerator() {
     setIsDragging(true)
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseMove = (_e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging || !canvasRef.current) return
 
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
 
     // Get mouse position relative to canvas
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width)
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+    const x = (_e.clientX - rect.left) * (canvas.width / rect.width)
+    const y = (_e.clientY - rect.top) * (canvas.height / rect.height)
 
     // Set text position directly to mouse position
     setTextPosition({ x, y })
@@ -177,28 +177,24 @@ export default function GiftCardGenerator() {
   // Simplified touch handlers
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!name.trim()) return
-    e.preventDefault() // Prevent scrolling
+    e.preventDefault()
     setIsDragging(true)
   }
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !canvasRef.current) return
-    e.preventDefault() // Prevent scrolling
+    e.preventDefault()
 
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
     const touch = e.touches[0]
 
-    // Get touch position relative to canvas
     const x = (touch.clientX - rect.left) * (canvas.width / rect.width)
     const y = (touch.clientY - rect.top) * (canvas.height / rect.height)
-
-    // Set text position directly to touch position
     setTextPosition({ x, y })
   }
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
+  const handleTouchEnd = () => {
     setIsDragging(false)
   }
 
