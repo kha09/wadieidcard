@@ -204,7 +204,7 @@ export default function GiftCardGenerator() {
         <CardHeader>
           <div className="flex items-center justify-center gap-4">
             <CardTitle className="text-2xl">بطاقة معايدة</CardTitle>
-            <NextImage src="/wmklogo.png" alt="Wadi Maakah Logo" width={40} height={40} />
+            <NextImage src="/wmklogo.png" alt="Wadi Maakah Logo" width={120} height={120} />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
